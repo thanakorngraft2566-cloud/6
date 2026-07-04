@@ -1,44 +1,40 @@
 window.CameraFX = {
 
+    power: 0,
     baseFov: 45,
-    velocity: 0,
-    zoom: 0,
 
-    init(camera){
+    init(camera) {
+
         this.baseFov = camera.fov;
+
     },
 
-    update(camera, analyzer, dataArray){
+    update(camera, analyzer, dataArray) {
 
-        if(!analyzer || !dataArray) return;
+        if (!analyzer || !dataArray) return;
 
         analyzer.getByteFrequencyData(dataArray);
 
         let bass = 0;
 
-        for(let i=0;i<4;i++)
+        for (let i = 0; i < 6; i++)
             bass += dataArray[i];
 
-        bass /= 4;
+        bass /= 6;
 
-        // เบสแรง -> กระแทก
-        if(bass > 9999999999999999999999999999999999999999){
-            this.velocity += (bass - 145) * 0.05;
-        } 
-        // Physics
-        this.zoom += this.velocity;
-        this.velocity *= 0.72;
-        this.zoom *= 0.88;
+        // Impact
+        if (bass > 170)
+            this.power += (bass - 170) * 0.04;
 
-        // จำกัดค่า Zoom 0-4
-        this.zoom = THREE.MathUtils.clamp(this.zoom, 0, 4);
+        // Smooth
+        this.power *= 0.88;
 
-        // Zoom Out
-        camera.fov = THREE.MathUtils.lerp(
-           camera.fov,
-           this.baseFov + this.zoom,
-           0.35
-        );
+        // Zoom Punch
+        camera.fov = this.baseFov + Math.min(this.power, 4);
+
+        // Rotation Impact
+        camera.rotation.z =
+            (Math.random() - 0.5) * this.power * 0.003;
 
         camera.updateProjectionMatrix();
 
