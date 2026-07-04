@@ -382,6 +382,11 @@
         const splashStatus = document.getElementById('splash-status');
         const loadingBar = document.getElementById('loading-bar');
         const splash = document.getElementById('splash-screen');
+        let subBass;
+        let bass;
+        let mid;
+        let high;
+        let distortion;
         let masterGain;
         let eqBypass = false;
         const steps = [
@@ -2726,11 +2731,11 @@
             sliderHigh.value = 0;
             sliderMaster.value = 100;
 
-            bassValue.innerText = "0 dB";
-            bassFreqValue.innerText = "120 Hz";
-            midValue.innerText = "0 dB";
-            highValue.innerText = "0 dB";
-            masterValue.innerText = "100%";
+            sliderBass.dispatchEvent(new Event("input"));
+            sliderBassFreq.dispatchEvent(new Event("input"));
+            sliderMid.dispatchEvent(new Event("input"));
+            sliderHigh.dispatchEvent(new Event("input"));
+            sliderMaster.dispatchEvent(new Event("input"));
 
         };
     }
@@ -6532,6 +6537,7 @@
     // FIX #3: Audio upload tidak bocor memory — disconnect source lama sebelum buat yang baru
     function handleAudioUpload(input) {
         if (!input.files || !input.files[0]) return;
+        
         const file = input.files[0];
         document.getElementById('audio-filename').innerText = file.name.toUpperCase();
 
@@ -6572,7 +6578,7 @@
         // SUB BASS
         // ====================
 
-        const subBass = audioContext.createBiquadFilter();
+        subBass = audioContext.createBiquadFilter();
         subBass.type = "lowshelf";
         subBass.frequency.value = 45;
         subBass.gain.value = 10;
@@ -6581,7 +6587,7 @@
         // BASS BOOST
         // ====================
 
-        const bass = audioContext.createBiquadFilter();
+        bass = audioContext.createBiquadFilter();
         bass.type = "lowshelf";
         bass.frequency.value = 90;
         bass.gain.value = 12;
@@ -6590,7 +6596,7 @@
         // MID SHAKE
         // ====================
 
-        const mid = audioContext.createBiquadFilter();
+        mid = audioContext.createBiquadFilter();
         mid.type = "peaking";
         mid.frequency.value = 2200;
         mid.Q.value = 1.2;
@@ -6600,7 +6606,7 @@
         // HIGH
         // ====================
 
-        const high = audioContext.createBiquadFilter();
+        high = audioContext.createBiquadFilter();
         high.type = "highshelf";
         high.frequency.value = 7000;
         high.gain.value = 2;
@@ -6609,7 +6615,7 @@
         // DISTORTION
         // ====================
 
-        const distortion = audioContext.createWaveShaper();
+        distortion = audioContext.createWaveShaper();
 
         function makeDistortionCurve(amount){
 
@@ -6637,21 +6643,8 @@
         // ====================
         masterGain = audioContext.createGain();
         masterGain.gain.value = 1;
-        // สายที่ 1 : Analyzer (เสียงดิบ)
-        audioSource.connect(audioAnalyzer);
 
         // สายที่ 2 : เสียงสำหรับฟัง
-        audioSource
-            .connect(subBass)
-            .connect(bass)
-            .connect(mid)
-            .connect(high)
-            .connect(distortion)
-            .connect(audioAnalyzer);
-
-        audioAnalyzer.connect(masterGain);
-
-        masterGain.connect(audioContext.destination);
 
         // FFT
 
@@ -6664,37 +6657,32 @@
     }
     function reconnectAudio(bypass) {
 
-        audioSource.disconnect();
-        subBass.disconnect();
-        bass.disconnect();
-        mid.disconnect();
-        high.disconnect();
-        distortion.disconnect();
-        audioAnalyzer.disconnect();
-        masterGain.disconnect();
+        try { audioSource.disconnect(); } catch(e) {}
+        try { subBass.disconnect(); } catch(e) {}
+        try { bass.disconnect(); } catch(e) {}
+        try { mid.disconnect(); } catch(e) {}
+        try { high.disconnect(); } catch(e) {}
+        try { distortion.disconnect(); } catch(e) {}
+        try { audioAnalyzer.disconnect(); } catch(e) {}
+        try { masterGain.disconnect(); } catch(e) {}
 
         if (bypass) {
 
-            // ===== ไม่ผ่าน EQ =====
             audioSource.connect(masterGain);
 
         } else {
 
-            // ===== ผ่าน EQ =====
-            audioSource
-                .connect(subBass)
-                .connect(bass)
-                .connect(mid)
-                .connect(high)
-                .connect(distortion)
-                .connect(audioAnalyzer);
-
+            audioSource.connect(subBass);
+            subBass.connect(bass);
+            bass.connect(mid);
+            mid.connect(high);
+            high.connect(distortion);
+            distortion.connect(audioAnalyzer);
             audioAnalyzer.connect(masterGain);
 
         }
 
         masterGain.connect(audioContext.destination);
-
     }
 
     function toggleAudio() {
