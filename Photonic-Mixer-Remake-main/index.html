@@ -21,6 +21,7 @@
     <script src="js/FXEngine.js"></script>
     <script src="js/MotionBlur.js"></script>
     <script src="js/CameraFX.js"></script>
+    <script src="js/cone.js"></script>
     <!-- Library untuk membaca file FBX & OBJ secara lokal -->
     <script src="https://cdn.jsdelivr.net/npm/fflate@0.7.4/umd/index.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
@@ -559,6 +560,20 @@
         <button class="io-btn" onclick="saveProject()" style="flex:1; text-align:center;">SAVE PROJECT</button>
         <button class="io-btn" onclick="document.getElementById('project-loader').click()" style="flex:1; text-align:center;">LOAD PROJECT</button>
         <input type="file" id="project-loader" accept=".json" onchange="loadProject(this)">
+    </div>
+    <div class="setting-row">
+    <label>Render Quality</label>
+
+    <select id="render-quality">
+            <option value="0.2">0.2x</option>
+            <option value="0.5">0.5x</option>
+            <option value="0.7">0.7x</option>
+            <option value="1" >1.0x</option>
+            <option value="1.5" selected>1.5x</option>
+            <option value="2">2.0x</option>
+            <option value="4">4.0x</option>
+            <option value="6">6.0x</option>
+        </select>
     </div>
 
     <div class="frame-manager" id="mover-frame-manager-main" style="display:none;">
@@ -1851,11 +1866,16 @@
         camera.position.set(0, 30, 110);
         camera.lookAt(0, 5, 0);
 
-        renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
+        renderer = new THREE.WebGLRenderer({
+            antialias: false,
+            powerPreference: "high-performance"
+        });
+
         renderer.setSize(v.clientWidth, v.clientHeight);
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+        renderer.setPixelRatio(1.5);
         renderer.setClearColor(0x1a1a1a, 1);
         renderer.shadowMap.enabled = false;
+
         v.appendChild(renderer.domElement);
 
         window.addEventListener('resize', () => {
@@ -2736,6 +2756,23 @@
             sliderMid.dispatchEvent(new Event("input"));
             sliderHigh.dispatchEvent(new Event("input"));
             sliderMaster.dispatchEvent(new Event("input"));
+
+        };
+        const qualitySelect = document.getElementById("render-quality");
+
+        qualitySelect.onchange = function () {
+
+            const ratio = parseFloat(this.value);
+
+            renderer.setPixelRatio(ratio);
+
+            const vp = document.getElementById("viewport");
+
+            renderer.setSize(
+                vp.clientWidth,
+                vp.clientHeight,
+                false
+            );
 
         };
     }
@@ -3928,29 +3965,9 @@
             group.add(segLens);
             segmentMeshes.push(segLens);
 
-            // Glow Cone
-            const glowGeom = new THREE.CylinderGeometry(8, 0.15, 120, 16, 1, true);
-            glowGeom.rotateX(Math.PI/2);
-            glowGeom.translate(0, 0, 60);
-            const glowMat = new THREE.MeshBasicMaterial({
-                color: 0xff0055,
-                transparent: true,
-                opacity: 0,
-                blending: THREE.AdditiveBlending,
-                depthWrite: false,
-                side: THREE.DoubleSide
-            });
-            const glowMesh = new THREE.Mesh(glowGeom, glowMat);
-            glowMesh.position.set(xOffset, 0, 0.85);
-            segmentGlows.push(glowMesh);
+            segmentGlows.push(null);
 
             // SpotLight per segmen
-            const spot = new THREE.SpotLight(0xff0055, 0, 150, Math.PI / 4.5, 0.6, 1);
-            spot.position.set(xOffset, 0, 0.9);
-            const spotTarget = new THREE.Object3D();
-            spotTarget.position.set(xOffset, 0, 50);
-            spot.target = spotTarget;
-            segmentLights.push(spot);
         }
 
         group.rotation.y = THREE.MathUtils.degToRad(st.rotY);
@@ -3961,12 +3978,10 @@
         scene.add(group);
 
         wallwashers.push({
-            group: group,
+            group,
             chassis: barMesh,
             foots: [footL, footR],
             segments: segmentMeshes,
-            glows: segmentGlows,
-            lights: segmentLights,
             state: st,
             originalIndex: index
         });
@@ -5760,10 +5775,10 @@
         const delay          = _cachedDelay;
         const spread         = _cachedSpread;
         const colorSmoothVal = _cachedColorSmooth;
-
+ 
         // Mirror Pan — sinkronisasi tiap frame
         applyMirrorPan();
-
+        
         // --- CIRCLE BOLAK-BALIK: update akumulasi sudut & balik arah tiap 1 putaran penuh ---
         if (fxState.circleBounce && !isFrozen) {
             let dt = (now - _circleBounceLastNow) / 1000;
@@ -5811,6 +5826,7 @@
                 lamps.forEach((l, j) => {
                     const arr = seq[j % seq.length];
                     if (arr && arr.length) l._chaseColorCache = arr;
+                    
                 });
             } else if (seq.length > 0) {
                 const safeIdx = Math.min(currentColorStepIdx, seq.length - 1);
@@ -5877,6 +5893,7 @@
                 try { _colA.set(cur.color); _colB.set(nxt.color); s.activeColor.copy(_colA.lerp(_colB, cf)); } catch(e) { s.curColStepIdx = 0; return; }
                 s.colStepTimer += 0.01 * (cur.speed || 1.0);
                 if (s.colStepTimer >= 1) { s.colStepTimer = 0; s.curColStepIdx = nIdx; }
+                
             }
         });
 
@@ -6368,16 +6385,6 @@
 
                 w.segments[j].material.emissive.copy(_colTmp);
                 w.segments[j].material.emissiveIntensity = s.curDim * 28;
-
-                if (w.glows[j]) {
-                    w.glows[j].material.color.copy(_colTmp);
-                    w.glows[j].material.opacity = s.curDim * 0.38;
-                }
-
-                if (w.lights[j]) {
-                    w.lights[j].color.copy(_colTmp);
-                    w.lights[j].intensity = s.curDim * 18;
-                }
             }
         });
 

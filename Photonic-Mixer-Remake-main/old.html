@@ -3294,28 +3294,11 @@
             segmentMeshes.push(segLens);
 
             // Glow Cone
-            const glowGeom = new THREE.CylinderGeometry(8, 0.15, 120, 16, 1, true);
-            glowGeom.rotateX(Math.PI/2);
-            glowGeom.translate(0, 0, 60);
-            const glowMat = new THREE.MeshBasicMaterial({
-                color: 0xff0055,
-                transparent: true,
-                opacity: 0,
-                blending: THREE.AdditiveBlending,
-                depthWrite: false,
-                side: THREE.DoubleSide
-            });
-            const glowMesh = new THREE.Mesh(glowGeom, glowMat);
-            glowMesh.position.set(xOffset, 0, 0.85);
+            const glowMesh = createBeamCone(xOffset);
             segmentGlows.push(glowMesh);
 
             // SpotLight per segmen
-            const spot = new THREE.SpotLight(0xff0055, 0, 150, Math.PI / 4.5, 0.6, 1);
-            spot.position.set(xOffset, 0, 0.9);
-            const spotTarget = new THREE.Object3D();
-            spotTarget.position.set(xOffset, 0, 50);
-            spot.target = spotTarget;
-            segmentLights.push(spot);
+            segmentLights.push(null);
         }
 
         group.rotation.y = THREE.MathUtils.degToRad(st.rotY);
